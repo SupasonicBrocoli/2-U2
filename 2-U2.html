@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>英语老师 · 云端语料库拼写检查</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+        body {
+            background: #f3f5f9;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+        }
+        .card {
+            max-width: 700px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0,20,50,0.12);
+            padding: 24px 20px 32px;
+        }
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            margin: 0 0 6px 0;
+            background: linear-gradient(145deg, #1e2b5e, #2c3e8f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .mirror-tip {
+            background: #fff3cd;
+            border-left: 6px solid #ff9800;
+            padding: 12px 16px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+        .mirror-tip a {
+            color: #2a4eb0;
+            font-weight: 500;
+            text-decoration: underline dotted;
+        }
+        .sentence-panel {
+            background: #fafcff;
+            border-radius: 24px;
+            padding: 20px 16px;
+            border: 1px solid #e2ebf6;
+        }
+        .chinese-sentence {
+            font-size: 1.45rem;
+            font-weight: 500;
+            color: #102a4c;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #dee8f5;
+        }
+        .reference-english {
+            background: #e4edfe;
+            border-radius: 40px;
+            padding: 10px 18px;
+            font-size: 1.15rem;
+            color: #11326b;
+            margin: 10px 0 20px 0;
+        }
+        .ref-label {
+            font-size: 0.8rem;
+            color: #4b6eb0;
+            margin-right: 10px;
+        }
+        #studentInput {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 1.1rem;
+            border: 2px solid #c6d6f0;
+            border-radius: 40px;
+            margin: 10px 0;
+        }
+        .word-by-word {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 6px 10px;
+            font-size: 1.4rem;
+            background: #fbfdff;
+            padding: 14px 12px;
+            border-radius: 24px;
+            border: 1px solid #e3eaf5;
+            min-height: 80px;
+        }
+        .word-correct {
+            background-color: #d2f0cf;
+            color: #05472a;
+            padding: 2px 8px;
+            border-radius: 30px;
+        }
+        .word-incorrect {
+            background-color: #ffe2dd;
+            color: #ae2020;
+            padding: 2px 8px;
+            border-radius: 30px;
+            text-decoration: underline wavy #e03a2f;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 20px 0 10px;
+        }
+        .nav-buttons button {
+            background: white;
+            border: 1px solid #bbcbe5;
+            padding: 10px 30px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .loading {
+            text-align: center;
+            color: #4a5b7a;
+            padding: 20px;
+        }
+        .error-msg {
+            color: #b13b30;
+            background: #ffe2df;
+            padding: 12px;
+            border-radius: 16px;
+            margin: 10px 0;
+        }
+        .mirror-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .mirror-btn {
+            background: #f0f4fe;
+            border: 1px solid #a0c6ff;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            color: #1e3c8a;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>📚 英语拼写练习 · 云端版</h1>
+    
+    <!-- 镜像站提示区 -->
+    <div class="mirror-tip" id="mirrorTip">
+        🌐 如果加载失败，请尝试切换镜像：<br>
+        <div class="mirror-list">
+            <button class="mirror-btn" onclick="switchMirror('direct')">🚀 直连GitHub</button>
+            <button class="mirror-btn" onclick="switchMirror('kkgithub')">🪞 kkgithub.com</button>
+            <button class="mirror-btn" onclick="switchMirror('bgithub')">🪞 bgithub.xyz</button>
+            <button class="mirror-btn" onclick="switchMirror('gitclone')">🪞 gitclone.com</button>
+            <button class="mirror-btn" onclick="switchMirror('ghproxy')">⚡ ghproxy.net</button>
+        </div>
+        <small>当前使用: <span id="currentMirror">直连GitHub</span></small>
+    </div>
+
+    <!-- 句子显示区 -->
+    <div class="sentence-panel">
+        <div id="loadingMsg" class="loading">⏳ 正在从云端加载语料库...</div>
+        <div id="errorMsg" class="error-msg" style="display:none;"></div>
+        
+        <div id="contentArea" style="display:none;">
+            <div class="chinese-sentence" id="chineseDisplay"></div>
+            <div class="reference-english">
+                <span class="ref-label">✅ 标准答案</span>
+                <span id="referenceDisplay"></span>
+            </div>
+
+            <input type="text" id="studentInput" placeholder="在这里输入英文..." autocomplete="off">
+
+            <div class="word-by-word" id="wordResult">
+                <span class="word-token">输入后自动检查</span>
+            </div>
+
+            <div class="nav-buttons">
+                <button id="prevBtn">◀ 上一句</button>
+                <button id="nextBtn">下一句 ▶</button>
+            </div>
+            <p style="text-align: center;" id="sentenceCounter"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==================== 配置区 ====================
+// 您的GitHub用户名
+const GITHUB_USERNAME = 'SupasonicBrocoli';
+// 您的仓库名
+const REPO_NAME = '2-U2';
+// 文件名
+const FILE_NAME = 'sentences2-U2.txt';
+// GitHub raw 地址
+const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_NAME}`;
+
+// 镜像站配置
+const MIRRORS = {
+    direct: GITHUB_RAW_URL,
+    kkgithub: `https://raw.kkgithub.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_NAME}`,
+    bgithub: `https://raw.bgithub.xyz/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_NAME}`,
+    gitclone: `https://raw.gitclone.com/github/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_NAME}`,
+    ghproxy: `https://ghproxy.net/https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/main/${FILE_NAME}`
+};
+
+// 当前使用的镜像
+let currentMirror = 'direct';
+let sentences = [];
+let currentIndex = 0;
+
+// DOM元素
+const loadingMsg = document.getElementById('loadingMsg');
+const errorMsg = document.getElementById('errorMsg');
+const contentArea = document.getElementById('contentArea');
+const chineseDisplay = document.getElementById('chineseDisplay');
+const referenceDisplay = document.getElementById('referenceDisplay');
+const studentInput = document.getElementById('studentInput');
+const wordResult = document.getElementById('wordResult');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const sentenceCounter = document.getElementById('sentenceCounter');
+const currentMirrorSpan = document.getElementById('currentMirror');
+
+// ==================== 切换镜像 ====================
+function switchMirror(mirrorKey) {
+    currentMirror = mirrorKey;
+    const mirrorNames = {
+        direct: '直连GitHub',
+        kkgithub: 'kkgithub.com',
+        bgithub: 'bgithub.xyz',
+        gitclone: 'gitclone.com',
+        ghproxy: 'ghproxy.net'
+    };
+    currentMirrorSpan.innerText = mirrorNames[mirrorKey] || mirrorKey;
+    
+    // 重新加载语料库
+    loadSentences();
+}
+
+// ==================== 加载语料库 ====================
+async function loadSentences() {
+    loadingMsg.style.display = 'block';
+    errorMsg.style.display = 'none';
+    contentArea.style.display = 'none';
+    
+    const url = MIRRORS[currentMirror];
+    
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`加载失败 (HTTP ${response.status})`);
+        
+        const text = await response.text();
+        parseSentences(text);
+        
+        loadingMsg.style.display = 'none';
+        contentArea.style.display = 'block';
+        
+        if (sentences.length > 0) {
+            currentIndex = 0;
+            updateDisplay();
+        } else {
+            showError('语料库为空，请检查sentences.txt格式');
+        }
+    } catch (error) {
+        console.error('加载失败:', error);
+        loadingMsg.style.display = 'none';
+        showError(`无法从 ${currentMirror} 加载语料库。<br>请尝试切换到其他镜像站。`);
+    }
+}
+
+// ==================== 解析句子 ====================
+function parseSentences(text) {
+    sentences = [];
+    const lines = text.split('\n');
+    
+    for (let line of lines) {
+        line = line.trim();
+        if (line === '' || line.startsWith('//')) continue;
+        
+        if (line.includes('|')) {
+            const parts = line.split('|').map(s => s.trim());
+            if (parts.length >= 2) {
+                sentences.push({
+                    chinese: parts[0],
+                    english: parts[1]
+                });
+            }
+        }
+    }
+    
+    console.log(`解析到 ${sentences.length} 个句子`);
+}
+
+// ==================== 更新显示 ====================
+function updateDisplay() {
+    if (!sentences.length) return;
+    
+    const current = sentences[currentIndex];
+    chineseDisplay.innerText = current.chinese;
+    referenceDisplay.innerText = current.english;
+    sentenceCounter.innerText = `第 ${currentIndex + 1} 句 / 共 ${sentences.length} 句`;
+    
+    // 触发拼写检查
+    checkSpelling();
+}
+
+// ==================== 拼写检查 ====================
+function normalizeWord(word) {
+    return word.replace(/^[^\w]+|[^\w]+$/g, '').toLowerCase();
+}
+
+function tokenize(text) {
+    const tokens = [];
+    const regex = /(\w+(?:[-']\w+)*)|(\s+)|([^\w\s]+)/g;
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+        if (match[1]) tokens.push({ text: match[1], type: 'word' });
+        else if (match[2]) tokens.push({ text: match[2], type: 'space' });
+        else if (match[3]) tokens.push({ text: match[3], type: 'punctuation' });
+    }
+    return tokens;
+}
+
+function checkSpelling() {
+    if (!sentences.length) return;
+    
+    const studentText = studentInput.value || '';
+    const referenceText = sentences[currentIndex].english;
+    
+    const studentTokens = tokenize(studentText);
+    const refTokens = tokenize(referenceText);
+    
+    // 提取单词比较
+    const refWords = refTokens.filter(t => t.type === 'word').map(t => normalizeWord(t.text));
+    const stuWords = studentTokens.filter(t => t.type === 'word').map(t => normalizeWord(t.text));
+    
+    // 标记正确/错误
+    const wordStatus = [];
+    for (let i = 0; i < stuWords.length; i++) {
+        if (i < refWords.length) {
+            wordStatus.push(stuWords[i] === refWords[i]);
+        } else {
+            wordStatus.push(false);
+        }
+    }
+    
+    // 渲染
+    let html = '';
+    let wordIdx = 0;
+    
+    studentTokens.forEach(token => {
+        if (token.type === 'word') {
+            const isCorrect = wordIdx < wordStatus.length ? wordStatus[wordIdx] : false;
+            const className = isCorrect ? 'word-correct' : 'word-incorrect';
+            html += `<span class="word-token ${className}">${escapeHtml(token.text)}</span>`;
+            wordIdx++;
+        } else if (token.type === 'space') {
+            html += `<span class="whitespace-token"> </span>`;
+        } else {
+            html += `<span class="punctuation-token">${escapeHtml(token.text)}</span>`;
+        }
+    });
+    
+    if (studentTokens.length === 0) {
+        html = '<span class="word-token">✏️ 在上方输入英文</span>';
+    }
+    
+    wordResult.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    return text.replace(/[&<>"]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        if (m === '"') return '&quot;';
+        return m;
+    });
+}
+
+function showError(msg) {
+    errorMsg.style.display = 'block';
+    errorMsg.innerHTML = msg;
+}
+
+// ==================== 事件监听 ====================
+studentInput.addEventListener('input', checkSpelling);
+
+prevBtn.addEventListener('click', () => {
+    if (sentences.length) {
+        currentIndex = (currentIndex - 1 + sentences.length) % sentences.length;
+        updateDisplay();
+    }
+});
+
+nextBtn.addEventListener('click', () => {
+    if (sentences.length) {
+        currentIndex = (currentIndex + 1) % sentences.length;
+        updateDisplay();
+    }
+});
+
+// ==================== 页面启动 ====================
+// 初始化加载
+loadSentences();
+</script>
+</body>
+</html>
